@@ -1,0 +1,19 @@
+{
+  "name": "host",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@family/protocol": "workspace:*",
+    "fflate": "^0.8.2",
+    "hono": "^4.9.8",
+    "uqr": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

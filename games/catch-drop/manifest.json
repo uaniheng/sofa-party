@@ -1,0 +1,18 @@
+{
+  "id": "catch-drop",
+  "name": "接住它",
+  "version": "1.0.0",
+  "description": "电视上掉星星，用手机左右移动去接。接到炸弹会扣分。适合 2～8 人。",
+  "cover": "cover.svg",
+  "minPlayers": 2,
+  "maxPlayers": 8,
+  "playMode": "shared-screen",
+  "supportsTV": true,
+  "usesSave": true,
+  "tickHz": 20,
+  "entry": {
+    "display": "display/index.html",
+    "controller": "controller/index.html",
+    "server": "server.js"
+  }
+}

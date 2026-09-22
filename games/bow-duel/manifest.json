@@ -1,0 +1,15 @@
+{
+  "id": "bow-duel",
+  "name": "柱上对射",
+  "version": "1.2.0",
+  "description": "两人手机横屏对射，同时拉弓。往后拉力道，上下调角度，箭走抛物线。射中对方柱子会下沉。",
+  "cover": "cover.svg",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "playMode": "personal",
+  "supportsTV": false,
+  "usesSave": true,
+  "entry": {
+    "player": "player/index.html"
+  }
+}

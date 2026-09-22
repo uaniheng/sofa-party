@@ -1,0 +1,11 @@
+{
+  "name": "@family/sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/game.ts"
+  },
+  "dependencies": {
+    "@family/protocol": "workspace:*"
+  }
+}

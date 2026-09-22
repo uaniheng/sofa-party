@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14203a"/>
+      <stop offset="1" stop-color="#0c1220"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="400" rx="28" fill="url(#bg)"/>
+  <polygon points="470,86 496,162 578,162 512,210 536,288 470,240 404,288 428,210 362,162 444,162" fill="#f0c75e"/>
+  <rect x="40" y="300" width="140" height="36" rx="12" fill="#4C8BF5"/>
+  <text x="48" y="150" font-size="42" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-weight="800" fill="#f4f1ea">¥Oƒ</text>
+  <text x="48" y="196" font-size="22" font-family="Segoe UI, Microsoft YaHei, sans-serif" fill="#9aa3b8">K:æóû¨»¥</text>
+</svg>

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data/
+apps/host/public/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.svelte-kit/
+.vite/
+apps/web/dist/
+data/tmp/
+sources.json
