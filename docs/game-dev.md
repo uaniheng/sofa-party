@@ -155,9 +155,32 @@ my-game/
 | `supportsTV` | 建议 | 大屏适不适合客厅电视。大屏类游戏写 `true` |
 | `usesSave` | 否 | 有进度时写 `true` |
 | `tickHz` | 否 | 只给 `server.js` 用。默认 20，最高 60 |
+| `pad` | 否 | 声明你要一只什么样的手柄，见下一节 |
 | `entry` | 是 | 缺了当前玩法要的页面，大厅会把这包标成损坏，不能开始 |
 
 只做每人一屏时，`entry` 里只写 `player`。只做大屏加手柄时，只写 `display` 和 `controller`。
+
+### pad：声明你要一只什么手柄
+
+```json
+"pad": {
+  "stick": "free",
+  "buttons": [
+    { "id": "jump", "label": "跳" },
+    { "id": "block", "label": "格挡", "hold": true }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `stick` | `none`（默认，不要摇杆）、`horizontal`、`vertical`、`free`（两轴都能推） |
+| `buttons[].id` | 发给服务端的名字。只能小写字母、数字和下划线，最多 8 个，不能重复 |
+| `buttons[].label` | 按钮上显示的中文短词，一两个字 |
+| `buttons[].hold` | **按住键**：按下时发 `down:true` 并周期性重发，松开才发 `down:false`。适合「格挡」「蓄力」这类状态型操作，服务端按布尔状态处理 |
+| | **点按键**（默认不写 `hold`）：只在按下那一刻发一组 `down:true` + `down:false`，**不会被重发**。适合「出拳」「跳跃」这类一次性动作 |
+
+写错了和 `entry` 一样会被标成损坏包。不写 `pad` 不算错，只是手柄得你自己做。
 
 ---
 
@@ -388,13 +411,52 @@ export default {
 
 竖屏、大按钮、少字。不要把整张地图画在手机上。分数条可以有。
 
-摇杆用 `-1～1`，自己节流后再 `sendInput`。按下和抬起分开：
+#### 用官方手柄，别自己做
+
+SDK 里有一只现成的手柄。你只声明要哪些键，剩下的它全管：指针捕获、节流、安全区、玩家配色、按住状态重发、切走再回来自动松手。
+
+```js
+import { attachPad, connectGame } from "/sdk/game.js";
+
+const game = await connectGame();
+
+const pad = attachPad({
+  stick: "horizontal",                       // 或 "vertical" / "free"；不要摇杆就省略
+  buttons: [
+    { id: "jump", label: "跳" },
+    { id: "block", label: "格挡", hold: true },
+  ],
+  color: game.me?.color,                     // 用玩家自己的颜色上色
+  onInput: (input) => game.sendInput(input),
+});
+
+// 服务端说现在不能出招时，把键灰掉（已按住的会先发一次 down:false）
+pad.setEnabled({ jump: false });
+pad.setStickEnabled(false);
+```
+
+它叠在页面底部，除了摇杆和按钮，其它区域照样点得到你自己的页面。要拆掉就 `pad.destroy()`。
+
+它发出的就是下面这两种形状，服务端照着解析即可：
+
+```js
+{ type: "stick", x: -1, y: 0 }          // x / y 都是 -1～1
+{ type: "button", id: "jump", down: true }
+```
+
+#### 自己写手柄
+
+官方控件不够用（比如要做转盘、卡牌区）时才自己写。规则一样：摇杆 `-1～1`，按下和抬起分开，自己节流到每秒 20～30 次。
 
 ```js
 game.sendInput({ type: "stick", x: -1, y: 0 });
 game.sendInput({ type: "button", id: "a", down: true });
 game.sendInput({ type: "button", id: "a", down: false });
 ```
+
+**按住状态要自己周期重发**（大约每 60 毫秒一次）。`sendInput` 是尽力送达的，丢一次包就会「一直往前走」。只对持续状态重发——一次性动作重发会被服务端当成连击。
+
+**别用 `pointerleave` 当松手**：手指在按钮上轻微滑动就会误触发，要用 `setPointerCapture`。
 
 没有 `server.js` 时，点开始的那一页还要在 `displayGone` 里暂停。有 `server.js` 时，暂停写在 `onDisplay` 里，手柄页只发操作。
 

@@ -68,7 +68,7 @@
 ## 4. 仓库布局（建议）
 
 ```
-game-service/
+sofa-party-service/
   apps/host/                 # 主机进程
   apps/web/                  # Svelte 外壳：管理 / 大屏 / 加入 / 大厅
   packages/protocol/         # 前后端共用的消息与 API 类型
@@ -202,11 +202,29 @@ sources.json           # 已添加的游戏源，也可放进 sqlite
   "port": 8080,
   "joinUrl": "http://192.168.1.8:8080/",
   "screenUrl": "http://192.168.1.8:8080/screen",
-  "lanAddresses": ["192.168.1.8"]
+  "lanAddresses": ["192.168.1.8"],
+  "cert": {
+    "downloadUrl": "http://192.168.1.8:8080/cert",
+    "httpsJoinUrl": "https://192.168.1.8:8443/",
+    "httpsPort": 8443,
+    "httpsError": null,
+    "issued": true,
+    "coversAddress": true,
+    "localTrust": "trusted",
+    "localTrustMessage": "这台电脑已经信任证书，浏览器打开 https 不会再报警。"
+  }
 }
 ```
 
-`GET /api/qr?kind=join|screen` → SVG。
+`GET /api/qr?kind=join|screen|cert|https` → SVG。`cert` 是手机下载证书的页面，`https` 是装好证书后的体感加入地址。
+
+证书不在启动时生成。管理页点 `POST /api/cert/issue` 才签发，放在 `data/certs/`（不进 Git）。点 `POST /api/cert/install` 才写入本机信任库。手机在信任之前打不开 https，所以证书下载走 http：
+
+- `GET /cert` 安装说明
+- `GET /cert/ca.crt` 给安卓的 CA 证书
+- `GET /cert/ca.mobileconfig` 给 iPhone 的描述文件
+
+https 默认端口 `8443`，可用环境变量 `HTTPS_PORT` 改。再次签发时根证书不变，手机不用重装；若当前地址不在证书里，`coversAddress` 为 false。
 
 ### 7.2 档案
 

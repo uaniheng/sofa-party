@@ -1,14 +1,16 @@
 import { Hono } from "hono";
 import { serveStatic, websocket } from "hono/bun";
 import { logger } from "hono/logger";
-import { registerApi } from "./api";
+import { registerApi, registerCertRoutes } from "./api";
+import { defaultHttpsPort } from "./certs";
 import { HostApp } from "./host";
 import { registerWs } from "./ws";
 
 const portArg = process.argv.find((a) => a.startsWith("--port="));
 const port = Number(portArg?.split("=")[1] ?? process.env.PORT ?? 8080);
+const httpsPort = defaultHttpsPort(port, process.env.HTTPS_PORT);
 const viteUrl = process.env.VITE_DEV_URL;
-const host = new HostApp(port);
+const host = new HostApp(port, httpsPort);
 const app = new Hono();
 
 app.use(logger());
@@ -20,6 +22,7 @@ app.onError((err, c) => {
   return c.json({ error: "internal", message: "主机出错了" }, 500);
 });
 registerApi(app, host);
+registerCertRoutes(app, host);
 registerWs(app, host);
 
 app.get("/sdk/game.js", async (c) => {
@@ -96,6 +99,40 @@ app.notFound(async (c) => {
   return c.text("Not Found", 404);
 });
 
+let httpsServer: ReturnType<typeof Bun.serve> | null = null;
+
+function startHttps() {
+  const tls = host.certs.tls();
+  if (!tls) {
+    host.certs.noteHttps(null);
+    return;
+  }
+  try {
+    httpsServer = Bun.serve({
+      port: host.certs.httpsPort,
+      hostname: "0.0.0.0",
+      fetch: app.fetch,
+      websocket,
+      tls,
+    });
+    host.certs.noteHttps(null);
+  } catch (err) {
+    httpsServer = null;
+    const message = err instanceof Error ? err.message : String(err);
+    host.certs.noteHttps(`https 端口 ${host.certs.httpsPort} 没能打开：${message}`);
+    console.error(host.certs.httpsError);
+  }
+}
+
+host.certs.onServerCertChange = () => {
+  const prev = httpsServer;
+  httpsServer = null;
+  prev?.stop(true);
+  startHttps();
+};
+
+startHttps();
+
 const server = Bun.serve({
   port,
   hostname: "0.0.0.0",
@@ -109,6 +146,7 @@ console.log("沙发派对已启动");
 console.log(`加入（手机）： ${meta.joinUrl}`);
 console.log(`大屏（电视手输）： ${meta.screenUrl}`);
 console.log(`管理（本机）： http://127.0.0.1:${port}/admin`);
+if (meta.cert.issued && meta.cert.httpsJoinUrl) console.log(`体感加入： ${meta.cert.httpsJoinUrl}`);
 if (meta.lanAddresses.length > 1) {
   console.log(`本机网卡： ${meta.lanAddresses.join(", ")}`);
 }

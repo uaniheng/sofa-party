@@ -56,6 +56,7 @@ bun run dev
 | `bun run dev`     | 同时启动主机和外壳开发服务                     |
 | `bun run start`   | 只启动主机。外壳需要事先 `bun run build`      |
 | `bun run test`    | 跑主机测试                             |
+| `bun run typecheck` | 类型检查（主机和外壳各自的 tsconfig）        |
 | `bun run build`   | 构建外壳，并生成 `/sdk/game.js`           |
 | `bun run compile` | 在 build 之后打成单文件 `dist/sofa-party` |
 

@@ -1,25 +1,84 @@
-import type { GameInfo, Manifest, PlayMode } from "@family/protocol";
+import {
+  MAX_PAD_BUTTONS,
+  PAD_STICKS,
+  type GameInfo,
+  type Manifest,
+  type PadButton,
+  type PadSpec,
+  type PlayMode,
+} from "@family/protocol";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VER_RE = /^\d+\.\d+\.\d+/;
+const PAD_ID_RE = /^[a-z0-9_]+$/;
 const MODES: PlayMode[] = ["personal", "shared-screen", "hybrid"];
 
 export type ManifestResult =
   | { ok: true; manifest: Manifest; info: GameInfo }
   | { ok: false; info: GameInfo };
 
+type PadResult = { ok: true; pad?: PadSpec } | { ok: false; error: string };
+
+/** 校验 manifest.pad。不写 pad 表示这款游戏自己做手柄页，不算错。 */
+export function validatePad(raw: unknown): PadResult {
+  if (raw === undefined) return { ok: true };
+  if (!raw || typeof raw !== "object") return { ok: false, error: "pad 需要是对象" };
+  const spec = raw as Partial<PadSpec>;
+
+  let stick: PadSpec["stick"];
+  if (spec.stick !== undefined) {
+    if (!PAD_STICKS.includes(spec.stick)) {
+      return { ok: false, error: `pad.stick 只能是 ${PAD_STICKS.join(" / ")}` };
+    }
+    if (spec.stick !== "none") stick = spec.stick;
+  }
+
+  let buttons: PadButton[] | undefined;
+  if (spec.buttons !== undefined) {
+    if (!Array.isArray(spec.buttons)) return { ok: false, error: "pad.buttons 需要是数组" };
+    if (spec.buttons.length > MAX_PAD_BUTTONS) {
+      return { ok: false, error: `pad.buttons 最多 ${MAX_PAD_BUTTONS} 个` };
+    }
+    buttons = [];
+    const seen = new Set<string>();
+    for (const entry of spec.buttons) {
+      if (!entry || typeof entry !== "object") {
+        return { ok: false, error: "pad.buttons 里每一项都要是对象" };
+      }
+      const item = entry as Partial<PadButton>;
+      if (typeof item.id !== "string" || !PAD_ID_RE.test(item.id)) {
+        return { ok: false, error: "pad.buttons 的 id 只能是小写字母、数字和下划线" };
+      }
+      if (seen.has(item.id)) return { ok: false, error: `pad.buttons 的 id 重复：${item.id}` };
+      seen.add(item.id);
+      if (typeof item.label !== "string" || !item.label.trim()) {
+        return { ok: false, error: `pad.buttons 的 ${item.id} 缺少 label` };
+      }
+      const button: PadButton = { id: item.id, label: item.label.trim() };
+      if (item.hold !== undefined) button.hold = !!item.hold;
+      buttons.push(button);
+    }
+  }
+
+  const pad: PadSpec = {};
+  if (stick) pad.stick = stick;
+  if (buttons?.length) pad.buttons = buttons;
+  return { ok: true, pad: Object.keys(pad).length ? pad : undefined };
+}
+
 export function validateManifest(
   raw: unknown,
   folderId: string,
   gamesDir: string,
 ): ManifestResult {
+  const source = raw as Partial<Manifest> | undefined;
   const base = (partial: Partial<GameInfo>, error: string): GameInfo => ({
     id: folderId,
-    name: typeof (raw as Manifest)?.name === "string" ? (raw as Manifest).name : folderId,
-    version: typeof (raw as Manifest)?.version === "string" ? (raw as Manifest).version : "0.0.0",
-    description: typeof (raw as Manifest)?.description === "string" ? (raw as Manifest).description : "",
+    name: typeof source?.name === "string" ? source.name : folderId,
+    version: typeof source?.version === "string" ? source.version : "0.0.0",
+    description: typeof source?.description === "string" ? source.description : "",
     minPlayers: 1,
     maxPlayers: 8,
     playMode: "personal",
@@ -57,6 +116,10 @@ export function validateManifest(
   }
   if (!MODES.includes(m.playMode)) {
     return { ok: false, info: base({}, "playMode 不合法") };
+  }
+  const padResult = validatePad(m.pad);
+  if (!padResult.ok) {
+    return { ok: false, info: base({ playMode: m.playMode }, padResult.error) };
   }
   if (!m.entry || typeof m.entry !== "object") {
     return { ok: false, info: base({}, "缺少 entry") };
@@ -111,6 +174,7 @@ export function validateManifest(
     broken: false,
     hasServer: Boolean(m.entry.server),
     entries,
+    ...(padResult.pad ? { pad: padResult.pad } : {}),
   };
   return { ok: true, manifest: m, info };
 }

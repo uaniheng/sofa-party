@@ -6,6 +6,7 @@ import {
   type SaveScope,
 } from "@family/protocol";
 import type { Context, Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   createPlayer,
   deletePlayer,
@@ -25,7 +26,54 @@ import {
 import { qrSvg } from "./qr";
 import type { HostApp } from "./host";
 
-function jsonError(c: Context, status: number, error: string, message: string) {
+export function registerCertRoutes(app: Hono, host: HostApp) {
+  app.get("/cert", (c) => {
+    const meta = host.meta();
+    if (!meta.cert.issued) {
+      return c.html(`<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>还没有证书</title>
+<body style="font-family:system-ui,sans-serif;background:#12141c;color:#f4f1ea;padding:28px">
+<main style="max-width:520px;margin:0 auto">
+<h1>还没有证书</h1>
+<p>请先在电脑的管理页点「生成证书」，再回到这里安装。</p>
+</main></body></html>`);
+    }
+    return c.html(host.certs.page({ ua: c.req.header("user-agent") ?? "", httpsJoinUrl: meta.cert.httpsJoinUrl }));
+  });
+
+  app.get("/cert/ca.crt", (c) => {
+    const pem = host.certs.caPem();
+    if (!pem) return c.text("证书还没生成", 503);
+    return c.body(pem, 200, {
+      "Content-Type": "application/x-x509-ca-cert",
+      "Cache-Control": "no-store",
+    });
+  });
+
+  app.get("/cert/ca.mobileconfig", (c) => {
+    const body = host.certs.mobileconfig();
+    if (!body) return c.text("证书还没生成", 503);
+    return c.body(body, 200, {
+      "Content-Type": "application/x-apple-aspen-config",
+      "Cache-Control": "no-store",
+    });
+  });
+
+  app.post("/api/cert/issue", (c) => {
+    host.issueCert();
+    return c.json(host.meta());
+  });
+
+  app.post("/api/cert/install", async (c) => {
+    if (!host.certs.issued) return c.json({ error: "no_cert", message: "请先在管理页生成证书" }, 400);
+    await host.certs.installLocal();
+    return c.json(host.meta());
+  });
+}
+
+function jsonError(c: Context, status: ContentfulStatusCode, error: string, message: string) {
   return c.json({ error, message }, status);
 }
 
@@ -51,8 +99,17 @@ export function registerApi(app: Hono, host: HostApp) {
   app.get("/api/qr", (c) => {
     const kind = c.req.query("kind") ?? "join";
     const meta = host.meta();
-    const text = kind === "screen" ? meta.screenUrl : meta.joinUrl;
-    return c.body(qrSvg(text), 200, { "Content-Type": "image/svg+xml; charset=utf-8" });
+    let text = meta.joinUrl;
+    if (kind === "screen") text = meta.screenUrl;
+    else if (kind === "cert") text = meta.cert.downloadUrl;
+    else if (kind === "https") {
+      if (!meta.cert.httpsJoinUrl) return c.text(meta.cert.httpsError ?? "https 还没起来", 404);
+      text = meta.cert.httpsJoinUrl;
+    }
+    return c.body(qrSvg(text), 200, {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
   });
 
   app.get("/api/players", (c) => {

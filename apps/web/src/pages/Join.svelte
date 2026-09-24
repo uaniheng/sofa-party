@@ -151,6 +151,9 @@
     <Lobby canStart token={token} me={me} onIdentity={rememberMe} onKicked={clearIdentity} />
   {:else}
     <p class="muted">不用房间号。选一个还没人占用的名字，先进去的人占住。</p>
+    {#if location.protocol !== "https:"}
+      <p class="muted">要用体感的话，先<a href="/cert">安装主机证书</a>，再用管理页上的 https 加入码进来。</p>
+    {/if}
     <section class="card">
       <h2>我是谁</h2>
       {#if error}<p class="bad">{error}</p>{/if}

@@ -8,6 +8,7 @@ import { listLanAddresses, pickDefaultAddress } from "./lan";
 import { GameLogBuffer } from "./logs";
 import { PartyRoom } from "./party";
 import { resolvePaths, type HostPaths } from "./paths";
+import { LocalCerts } from "./certs";
 import { SourceManager } from "./sources";
 
 function readSaveValue(db: Database, gameId: string, playerId: string, key: string): unknown {
@@ -45,8 +46,9 @@ export class HostApp {
   lanAddresses: string[];
   selectedAddress: string | null;
   port: number;
+  certs: LocalCerts;
 
-  constructor(port = Number(process.env.PORT ?? 8080)) {
+  constructor(port = Number(process.env.PORT ?? 8080), httpsPort = 8443) {
     this.port = port;
     this.paths = resolvePaths();
     this.db = openDatabase(this.paths);
@@ -62,6 +64,12 @@ export class HostApp {
     this.lanAddresses = listLanAddresses();
     const saved = readHostConfig(this.paths).selectedAddress ?? null;
     this.selectedAddress = pickDefaultAddress(this.lanAddresses, saved);
+    this.certs = new LocalCerts(join(this.paths.dataDir, "certs"), httpsPort);
+    this.certs.rememberExisting();
+  }
+
+  issueCert() {
+    this.certs.issue(this.certificateIps());
   }
 
   meta() {
@@ -76,7 +84,12 @@ export class HostApp {
       screenUrl: `http://${host}:${this.port}/s`,
       lanAddresses: this.lanAddresses,
       selectedAddress: this.selectedAddress,
+      cert: this.certs.status(this.selectedAddress, this.port, this.certificateIps()),
     };
+  }
+
+  private certificateIps(): string[] {
+    return this.selectedAddress ? [...this.lanAddresses, this.selectedAddress] : this.lanAddresses;
   }
 
   async sdkJavascript(): Promise<string> {

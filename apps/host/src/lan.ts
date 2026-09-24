@@ -7,7 +7,7 @@ export function listLanAddresses(): string[] {
     if (!list) continue;
     for (const item of list) {
       if (item.internal) continue;
-      if (item.family !== "IPv4" && item.family !== 4) continue;
+      if (item.family !== "IPv4") continue;
       if (item.address.startsWith("169.254.")) continue;
       found.add(item.address);
     }

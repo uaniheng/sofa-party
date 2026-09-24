@@ -10,6 +10,10 @@
     "start": "bun run --cwd apps/host start",
     "build": "bun run --cwd apps/web build && bun build packages/sdk/src/game.ts --outfile apps/host/public/sdk/game.js --format esm --target browser",
     "compile": "bun run build && bun build --compile apps/host/src/index.ts --outfile dist/sofa-party",
-    "test": "bun test apps/host"
+    "test": "bun test apps/host",
+    "typecheck": "tsc -p apps/host/tsconfig.json && tsc -p packages/sdk/tsconfig.json && tsc -p apps/web/tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
   }
 }

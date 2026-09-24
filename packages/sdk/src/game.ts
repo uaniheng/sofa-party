@@ -12,8 +12,12 @@ import {
   type WsServerMessage,
 } from "@family/protocol";
 import { attachGameMenu } from "./menu";
+import { attachPad } from "./pad";
 
 export type { PageRole, PlayerPublic, SendTo };
+export type { PadButton, PadInput, PadSpec, PadStick } from "@family/protocol";
+export type { PadHandle, PadOptions } from "./pad";
+export { attachPad };
 
 type Handler<T> = (arg: T) => void;
 
